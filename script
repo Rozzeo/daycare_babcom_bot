@@ -1,0 +1,337 @@
+!pip install nest_asyncio
+!pip install aiogram
+from aiogram import Bot, Dispatcher, types
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.filters.command import Command
+import logging
+import sys
+
+API_TOKEN = '7436835272:AAHTmvohEtXsu4pyamNaGzgjgghyVsl3bpk'
+
+
+bot = Bot(token=API_TOKEN)
+dp = Dispatcher()
+
+# Dictionary to store user data
+users_data = {}
+
+# Main keyboard
+main_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="בדיקת זכאות")],
+        [KeyboardButton(text="מידע על מסגרות")],
+
+        [KeyboardButton(text="נספחים")],
+        [KeyboardButton(text="שאלות נפוצות")],
+        [KeyboardButton(text="התחל מחדש")]
+    ],
+    resize_keyboard=True
+)
+
+# Keyboard for eligibility check
+eligibility_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="הורה עובד")],
+        [KeyboardButton(text="הורה לומד")],
+        [KeyboardButton(text="הורה בחופשת לידה")],
+        [KeyboardButton(text="משפחה חד הורית")],
+        [KeyboardButton(text="הורה עם מוגבלות")],
+        [KeyboardButton(text="משפחה עם מספר ילדים במעון")],
+        [KeyboardButton(text="חזרה")]
+    ],
+    resize_keyboard=True
+)
+
+# Keyboard for employment type
+employment_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="שכיר")],
+        [KeyboardButton(text="עצמאי")],
+
+        [KeyboardButton(text="עובד ולומד")],
+
+        [KeyboardButton(text="חזרה")]
+    ],
+    resize_keyboard=True
+)
+
+# Клавиатура для типов родителей в מעון
+maon_parent_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="שכיר")],
+        [KeyboardButton(text="עצמאי")],
+        [KeyboardButton(text="לומד")],
+        [KeyboardButton(text="חופשת לידה")],
+        [KeyboardButton(text="חד הורי")],
+        [KeyboardButton(text="אבטלה")],
+        [KeyboardButton(text="נכות")],
+        [KeyboardButton(text="חזרה")]
+    ],
+    resize_keyboard=True
+)
+
+
+# Keyboard for appendices
+appendices_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="נספח 1")],
+        [KeyboardButton(text="נספח 2")],
+        [KeyboardButton(text="נספח 3")],
+        [KeyboardButton(text="נספח 4")],
+        [KeyboardButton(text="חזרה")]
+    ],
+    resize_keyboard=True
+)
+
+# Keyboard for number of children
+children_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="2 ילדים")],
+        [KeyboardButton(text="3 ילדים או יותר")],
+        [KeyboardButton(text="חזרה")]
+    ],
+    resize_keyboard=True
+)
+
+framework_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="מעון")],
+        [KeyboardButton(text="משפחתון")],
+        [KeyboardButton(text="צהרון")],
+        [KeyboardButton(text="חזרה")]
+    ],
+    resize_keyboard=True
+)
+
+@dp.message(Command("start"))
+@dp.message(lambda message: message.text == "התחל מחדש")
+async def send_welcome(message: types.Message):
+    user_id = message.from_user.id
+    users_data[user_id] = {"state": None, "documents": []}
+    # await message.reply("שלום! אני בוט של משרד העבודה אגף עידוד תעסוקת הורים.", reply_markup=main_keyboard)
+
+    await message.reply( "הערה חשובה: חובה לאשר העברת נתונים מביטוח לאומי לכל ההורים!.שלום! אני בוט של משרד העבודה אגף עידוד תעסוקת הורים.", reply_markup=main_keyboard)
+
+@dp.message(lambda message: message.text == "בדיקת זכאות")
+async def eligibility_check(message: types.Message):
+    user_id = message.from_user.id
+    users_data[user_id]["state"] = "eligibility_check"
+    await message.reply("בחר את המצב המתאים לך:", reply_markup=eligibility_keyboard)
+@dp.message(lambda message: message.text == "מידע על מסגרות")
+async def framework_info(message: types.Message):
+    user_id = message.from_user.id
+    users_data[user_id]["state"] = "choosing_framework"
+    await message.reply("בחר את סוג המסגרת שברצונך לקבל עליה מידע:", reply_markup=framework_keyboard)
+
+@dp.message(lambda message: users_data.get(message.from_user.id, {}).get("state") == "choosing_framework")
+async def process_framework_choice(message: types.Message):
+    framework_type = message.text
+
+    if framework_type == "חזרה":
+        await message.reply("בחר אפשרות:", reply_markup=main_keyboard)
+    elif framework_type == "מעון":
+        await message.reply("מעון יום הוא מסגרת חינוכית-טיפולית לילדים בגילאי 3 חודשים עד 3 שנים. "
+                            "המעונות מפוקחים על ידי משרד העבודה ופועלים בין השעות 7:30 ל-16:00.")
+    elif framework_type == "משפחתון":
+        await message.reply("משפחתון הוא מסגרת ביתית לטיפול בקבוצה קטנה של ילדים (עד 5 ילדים) בגילאי 3 חודשים עד 3 שנים. "
+                            "המשפחתונים מפוקחים על ידי משרד העבודה ופועלים בדרך כלל בין השעות 7:30 ל-16:00.")
+    elif framework_type == "צהרון":
+        await message.reply("צהרון הוא מסגרת המשך לשעות אחר הצהריים, המיועדת לילדים בגילאי 3-5 שנים. "
+                            "הצהרונים פועלים בדרך כלל משעת סיום הלימודים בגן או בבית הספר ועד השעה 16:00 או 17:00.")
+
+# @dp.message(lambda message: message.text == "מידע על מסגרות")
+
+# async def framework_info(message: types.Message):
+#     user_id = message.from_user.id
+#     users_data[user_id]["state"] = "choosing_framework"
+#     await message.reply("בחר את סוג המסגרת שברצונך לקבל עליה מידע:", reply_markup=framework_keyboard)
+
+# @dp.message(lambda message: users_data.get(message.from_user.id, {}).get("state") == "choosing_framework")
+# async def process_framework_choice(message: types.Message):
+#     framework_type = message.text
+
+#     if framework_type == "חזרה":
+#         await message.reply("בחר אפשרות:", reply_markup=main_keyboard)
+#     elif framework_type == "מעון":
+#         await message.reply("מעון יום הוא מסגרת חינוכית-טיפולית לילדים בגילאי 3 חודשים עד 3 שנים. "
+#                             "המעונות מפוקחים על ידי משרד העבודה ופועלים בין השעות 7:00 ל-16:00.")
+#     elif framework_type == "משפחתון":
+#         await message.reply("משפחתון הוא מסגרת ביתית לטיפול בקבוצה קטנה של ילדים (עד 5 ילדים) בגילאי 3 חודשים עד 3 שנים. "
+#                             "המשפחתונים מפוקחים על ידי משרד העבודה ופועלים בדרך כלל בין השעות 7:00 ל-16:00.")
+#     elif framework_type == "צהרון":
+#         await message.reply("צהרון הוא מסגרת המשך לשעות אחר הצהריים, המיועדת לילדים בגילאי 3-5 שנים. "
+#                             "הצהרונים פועלים בדרך כלל משעת סיום הלימודים בגן או בבית הספר ועד השעה 16:00 או 17:00.")
+
+@dp.message(lambda message: users_data.get(message.from_user.id, {}).get("state") == "eligibility_check")
+async def process_eligibility(message: types.Message):
+    user_id = message.from_user.id
+    eligibility_type = message.text
+
+    if eligibility_type == "חזרה":
+        users_data[user_id]["state"] = None
+        await message.reply("בחר אפשרות:", reply_markup=main_keyboard)
+    # elif eligibility_type == "הורה עובד":
+    #     await message.reply("הורה עובד זכאי לסבסוד. נא להעלות  שלושה תלושי שכר לבדיקה.")
+    elif eligibility_type == "הורה עובד":
+        users_data[user_id]["state"] = "choosing_employment_type"
+        # await message.reply("בחר את סוג התעסוקה שלך:", reply_markup=employment_keyboard)
+        await message.reply("בחר את סוג התעסוקה שלך:", reply_markup=maon_parent_keyboard)
+
+    elif eligibility_type == "הורה לומד":
+        await message.reply(" הורה לומד זכאי לסבסוד. נא להעלות נספח 3  אישור לימודים ומערכת שעות לימודים.")
+    elif eligibility_type == "הורה בחופשת לידה":
+        await message.reply(" הורה בחופשת לידה זכאי לסבסוד למשך 15 שבועות. במידע שאריכה -נה לעלות  שלושה תלושי שכר לפני חופשת לידה  ואישור מעסיק אודות חזרה מחופשת לידה. .")
+    elif eligibility_type == "משפחה חד הורית":
+        await message.reply("משפחה חד הורית זכאית לסבסוד. נא להעלות תעודת זהות עם  ספח ותצהיר הורים יחידים")
+    elif eligibility_type == "אבטלה":
+        await message.reply("דרישות להורה מובטל במעון:- אישור העברת נתונים מביטוח לאומי - חובה- אישור זכאות לדמי אבטלה הכנסה מינימלית: 2,100 - מינימום 15 ימי אבטלה בחודש- אישור מביטוח לאומי על גובה דמי האבטלה הורה מובטל זכאי לסבסוד בתנאים מסוימים. נא להעלות אישור זכאות לדמי אבטלה מביטוח לאומי.")
+    elif eligibility_type == "הורה עם מוגבלות":
+        await message.reply("הורה המקבל קצבת נכות זכאי לסבסוד. נא להעלות אישור על קבלת קצבת נכות מגורם ממשלתי.")
+    elif eligibility_type == "משפחה עם מספר ילדים במעון":
+        users_data[user_id]["state"] = "choosing_children_number"
+        await message.reply("כמה ילדים יש לך במעון או במשפחתון?", reply_markup=children_keyboard)
+def get_maon_requirements(parent_type: str) -> str:
+    requirements = {
+        "שכיר": """דרישות להורה שכיר במעון:
+- אישור העברת נתונים מביטוח לאומי - חובה
+- 3 תלושי שכר רצופים מחודשים 1-6/2023
+- הכנסה מינימלית: 3,159 ₪
+- נדרש רצף תעסוקתי של 3 חודשים
+- יש להעלות את כל עמודי התלוש""",
+
+        "עצמאי": """דרישות להורה עצמאי במעון:
+- אישור העברת נתונים מביטוח לאומי - חובה
+- נספח 4 - אישור רו"ח
+-     מיועץ  מס  נספח 10 - אישור
+-
+- הכנסה מינימלית: 3,159 ₪
+-  לתקופה מ01-06 2024  דיווח על 3 חודשי עבודה רצופים""",
+
+        "לומד": """דרישות להורה לומד במעון:
+- אישור העברת נתונים מביטוח לאומי - חובה
+- אישור לימודים עדכני
+- מערכת שעות מאושרת
+- מינימום 24 שעות שבועיות למשק בית משותף
+- מינימום 20 שעות שבועיות למשק בית יחיד""",
+
+        "חופשת_לידה": """דרישות להורה בחופשת לידה במעון:
+- אישור העברת נתונים מביטוח לאומי - חובה
+- 3 תלושי שכר לפני חופשת לידה
+- אישור חופשת לידה מביטוח לאומי
+- תקופת זכאות: עד 15 שבועות
+- נספח 13 - אישור מעסיק על חזרה מחופשת לידה""",
+
+        "חד_הורי": """דרישות למשפחה חד הורית במעון:
+- אישור העברת נתונים מביטוח לאומי - חובה
+- תעודת זהות עם ספח
+- נספח 1 - תצהיר הורה יחיד
+- הכנסה מינימלית: 2,632 ₪
+- מסמכים נוספים בהתאם למצב (גרוש/אלמן וכו')""",
+
+        "אבטלה": """דרישות להורה מובטל במעון:
+- אישור העברת נתונים מביטוח לאומי - חובה
+- אישור זכאות לדמי אבטלה
+- הכנסה מינימלית: 2,100 ₪
+- מינימום 15 ימי אבטלה בחודש
+- אישור מביטוח לאומי על גובה דמי האבטלה""",
+
+        "נכות": """דרישות להורה עם נכות במעון:
+- אישור העברת נתונים מביטוח לאומי - חובה
+- אישור קצבת נכות מגורם ממשלתי
+- אין דרישת מינימום להכנסה
+- אישור על אחוזי נכות קבועה/זמנית"""
+    }
+    return requirements.get(parent_type, "סוג הורה לא נמצא")
+@dp.message(lambda message: users_data.get(message.from_user.id, {}).get("state") == "choosing_children_number")
+async def process_children_number(message: types.Message):
+    user_id = message.from_user.id
+    children_number = message.text
+
+    if children_number == "חזרה":
+        users_data[user_id]["state"] = "eligibility_check"
+        await message.reply("בחר את המצב המתאים לך:", reply_markup=eligibility_keyboard)
+    elif children_number == "2 ילדים":
+        await message.reply("משפחה עם 2 ילדים במעון או במשפחתון זכאית לדרגת סבסוד גבוהה יותר. נא להעלות תעודות זהות של ההורים עם ספח הילדים.")
+    elif children_number == "3 ילדים או יותר":
+        await message.reply("משפחה עם 3 ילדים או יותר במעון או במשפחתון זכאית לדרגת סבסוד גבוהה במיוחד. נא להעלות תעודות זהות של ההורים עם ספח הילדים.")
+
+
+# # Keyboard for number of children
+# children_keyboard = ReplyKeyboardMarkup(
+#     keyboard=[
+#         [KeyboardButton(text="2 ילדים")],
+#         [KeyboardButton(text="3 ילדים או יותר")],
+#         [KeyboardButton(text="חזרה")]
+#     ],
+#     resize_keyboard=True
+# )
+
+@dp.message(lambda message: message.text == "סוג תעסוקה")
+async def employment_type(message: types.Message):
+    user_id = message.from_user.id
+    users_data[user_id]["state"] = "choosing_employment_type"
+    await message.reply("בחר את סוג התעסוקה שלך:", reply_markup=employment_keyboard)
+
+@dp.message(lambda message: users_data.get(message.from_user.id, {}).get("state") == "choosing_employment_type")
+async def process_employment_type(message: types.Message):
+    user_id = message.from_user.id
+    employment_type = message.text
+
+    if employment_type == "חזרה":
+        users_data[user_id]["state"] = None
+        await message.reply("בחר אפשרות:", reply_markup=main_keyboard)
+    elif employment_type == "שכיר":
+        await message.reply("לאשר שימוש נתונים מביטוח לאומי")
+    elif employment_type == "עצמאי":
+        await message.reply("נא להעלות אישור רואה חשבון  או יועץ מס  על  הכנסות ואישור הכנסות לבעלי עצמאיים לחתימה של ההורה")
+    elif employment_type == "לומד":
+        await message.reply("נא להעלות אישור לימודים ומעכרת שעות כולל שעות שבועיות עדכני.")
+    elif employment_type == "עובד ולומד":
+        await message.reply(" נא להעלות 3 תלושי שכר אחרונים ואישור לימודיםומעכרת שעות כולל שעות שבועיות עדכני.")
+
+@dp.message(lambda message: message.text == "נספחים")
+async def appendices(message: types.Message):
+    user_id = message.from_user.id
+    users_data[user_id]["state"] = "choosing_appendix"
+    await message.reply("בחר את הנספח הרצוי:", reply_markup=appendices_keyboard)
+
+@dp.message(lambda message: users_data.get(message.from_user.id, {}).get("state") == "choosing_appendix")
+async def process_appendix(message: types.Message):
+    user_id = message.from_user.id
+    appendix = message.text
+
+    if appendix == "חזרה":
+        users_data[user_id]["state"] = None
+        await message.reply("בחר אפשרות:", reply_markup=main_keyboard)
+    elif appendix == "נספח 1":
+        await message.reply("נספח 1 - תצהיר הורה יחיד")
+    elif appendix == "נספח 2":
+        await message.reply("נספח 2 - אישור מעסיק על שנת שבתון")
+    elif appendix == "נספח 3":
+        await message.reply("נספח 3 - הצהרת העוסק על הכנסותיו")
+    elif appendix == "נספח 4":
+        await message.reply("נספח 4 - אישור רואה חשבון על הכנסות העוסק")
+
+@dp.message(lambda message: message.text == "שאלות נפוצות")
+async def faq(message: types.Message):
+    await message.reply("כאן תוכל למצוא תשובות לשאלות נפוצות:\n\n"
+                        "1. מהם תנאי הזכאות לסבסוד?\n"
+                        "2. אילו מסמכים נדרשים להגשת הבקשה?\n"
+                        "3. כיצד מחושב גובה הסבסוד?\n"
+                        "4. מתי ניתן להגיש בקשה לסבסוד?\n"
+                        "5. כמה זמן אורך תהליך הטיפול בבקשה?")
+
+# Настройка логгирования
+logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+
+# Функция для запуска бота
+async def main():
+    await dp.start_polling(bot)
+
+# Запуск бота
+import nest_asyncio
+import asyncio
+
+nest_asyncio.apply()
+asyncio.run(main())
+#2024-2025
